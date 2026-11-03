@@ -1,0 +1,6 @@
+services:
+  api:
+    build: ./app
+    image: tinyshop-api:1.2
+    ports:
+      - "127.0.0.1:3355:3355"
