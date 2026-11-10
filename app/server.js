@@ -1,36 +1,39 @@
 import express from 'express';
+import pg from 'pg';
+
 
 
 const app = express();
 app.use(express.json());
 
 // Read config
-
+const pool = new pg.Pool();
 const PORT = process.env.PORT || 3355;
 
-// Temporary in-memory 
-const items = [
-    {id: 1, name: "Keyboard", price: 500 },
-    {id: 2, name: "Mouse", price: 200 },
-    {id: 3, name: "printer", price: 690 },
-    {id: 4, name: "NoteBook", price: 399 }
-]
 
 
-app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
+app.get("/health", async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ status: "ok" });
+
+    } catch {
+        res.status(503).json({ status: "up down"})
+    }
 });
 
-app.get("/api/items", (req, res) => {
-    res.json(items);
+app.get("/api/items", async(req, res) => {
+    const { rows } = await pool.query('SELECT id, name, price FROM items ORDER BY id ASC');
+    res.json(rows);
 });
 
-app.post("/api/items", (req, res) => {
-    const item = { id: items.length + 1, name: req.body.name, price: req.body.price };
-    items.push(item);
-    res.status(201).json(item)
+app.post("/api/items", async (req, res) => {
+
+    const { rows } = await pool.query('INSERT INTO items (name, price) VALUES ($1, $2) RETURNING *', [req.body.name, req.body.price]);
+    res.status(201).json(rows[0])
 })
 
+await pool.query('CREATE TABLE IF NOT EXISTS items (id serial PRIMARY KEY, name text NOT NULL, price int NOT NULL)');
 
 
 app.listen(PORT, () => {
