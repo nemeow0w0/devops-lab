@@ -1,7 +1,7 @@
 services:
   api:
     build: ./app
-    image: tinyshop-api:1.4
+    image: tinyshop-api:1.5
     environment:
       PGHOST: db
       PGUSER: shop
