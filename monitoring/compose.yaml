@@ -24,6 +24,8 @@ services:
     volumes:
       - ./grafana.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
       - grafana-data:/var/lib/grafana  
+      - ./grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./dashboards:/etc/grafana/dashboards:ro
 
 volumes:
   promdata:
