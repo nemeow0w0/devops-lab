@@ -14,5 +14,17 @@ services:
     pid: "host"
     volumes:
       - /:/host:ro,rslave
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASS:?missing in .env}
+    volumes:
+      - ./grafana.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - grafana-data:/var/lib/grafana  
+
 volumes:
   promdata:
+  grafana-data:
