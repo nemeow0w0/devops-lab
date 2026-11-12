@@ -6,6 +6,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - promdata:/prometheus
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
 
   node-exporter:
     image: prom/node-exporter:v1.12.1
