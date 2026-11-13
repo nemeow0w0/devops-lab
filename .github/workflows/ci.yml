@@ -9,7 +9,7 @@ permissions:
     packages: write
 
 env: 
-    IMAGE: ghcr.io/nemeow0w0/ttinyshop-api:${{ github.sha}}
+    IMAGE: ghcr.io/nemeow0w0/tinyshop-api:${{ github.sha}}
 
 jobs:
     build:
@@ -30,8 +30,6 @@ jobs:
             - name: Build image
               run: docker build -t  "$IMAGE" ./app
 
-            - name: Show image
-              run: docker images tinyshop-api
 
             - name: Trivy scan
               run: |
