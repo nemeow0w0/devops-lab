@@ -60,7 +60,7 @@ curl ─▶ 127.0.0.1:3355 ─▶ api (Node.js, user "node") ─▶ db:5432 ─�
 ```bash
 echo "PG_PASS=$(openssl rand -hex 16)" > .env
 chmod 600 .env
-docker compose up -d --build
+docker compose up -d
 
 curl 127.0.0.1:3355/health
 curl -X POST 127.0.0.1:3355/api/items -H "Content-Type: application/json" -d '{"name":"Monitor","price":4500}'
@@ -104,3 +104,42 @@ does not use at runtime. After I removed npm from the image, the scan found 0 HI
 - **Trivy:** Trivy scans everything inside the image, not only my npm packages. If a
   vulnerability is in something the app does not use, I remove it. If the app uses it,
   I upgrade it. Then I scan again.
+
+## Stage 3: CI Pipeline with GitHub Actions
+
+Every push to `main` runs CI on GitHub. If a step fails, CI stops and nothing is pushed.
+
+```text
+push ─▶ Gitleaks ─▶ build ─▶ Trivy ─▶ push to GHCR
+```
+
+### Security choices
+
+- **Scan first, push last:** secrets and vulnerable images never reach GHCR.
+- **Least privilege:** the token can only read code and push packages.
+- **Scan all history:** Gitleaks checks every commit. `--redact` hides secrets in logs.
+- **Pin by SHA/digest:** tags can be moved (it happened to Trivy's GitHub Action in March 2026). SHAs can't.
+- **No `build:` on the server:** if the image is missing, deploy fails. It never runs an unscanned image.
+- **GitHub-hosted runner:** a clean VM every run. No self-hosted runner on a public repo.
+
+### Deploy
+
+Image tag = Git commit SHA.
+
+```bash
+# PC: set the new tag in compose.yaml, commit, push
+# Server:
+git pull
+sudo docker compose up -d
+```
+
+Rollback: `git revert` the tag commit, push, then run the same 2 commands.
+If Trivy fails, there is no image, so it can't be deployed.
+
+### What I Learned
+
+- **CI = my own commands:** run it by hand first, then put it in `run:`.
+- **Red tests:** I broke each check on purpose to prove it can fail.
+- **Deleted secrets still leak:** they stay in Git history. Rotate them.
+- **Tag vs digest:** a tag can move, a digest can't. With a digest, Docker ignores the tag.
+- **Read the logs:** the red step isn't always the buggy one. Exit 125 = Docker failed, exit 1 = Trivy found vulns.
