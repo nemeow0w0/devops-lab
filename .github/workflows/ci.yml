@@ -19,7 +19,7 @@ jobs:
             - name: Gitleaks scan
               run: |
                 docker run --rm \
-                    -v "$PWD":/repo:ro" \
+                    -v "$PWD:/repo:ro" \
                     ghcr.io/gitleaks/gitleaks:v8.30.1 \
                     git /repo --redact --verbose
 
