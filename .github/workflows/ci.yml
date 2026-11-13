@@ -8,18 +8,14 @@ permissions:
     contents: read
 
 jobs:
-    hello:
+    build:
         runs-on: ubuntu-latest
         steps:
-            - name: Before checkout
-              run: ls -la
 
             - uses: actions/checkout@v7
 
-            - name: After checkout
-              run: ls -la
+            - name: Build image
+              run: docker build -t tinyshop-api:${{ gtithub.sha }} ./app
 
-            - name: Tools on this machine
-              run: |
-                uname -a
-                docker --version
+            - name: Show image
+              run: docker images tinyshop-api
