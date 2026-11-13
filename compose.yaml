@@ -1,7 +1,6 @@
 services:
   api:
-    build: ./app
-    image: tinyshop-api:1.5
+    image: ghcr.io/nemeow0w0/tinyshop-api:7f7db31efc9f62a22d852e582463708cf37f96aa
     environment:
       PGHOST: db
       PGUSER: shop
