@@ -1,6 +1,6 @@
 services:
   api:
-    image: ghcr.io/nemeow0w0/tinyshop-api:7f7db31efc9f62a22d852e582463708cf37f96aa
+    image: ghcr.io/nemeow0w0/tinyshop-api:7f7db31efc9f62a22d852e582463708cf37f96aa # gitleaks:allow
     environment:
       PGHOST: db
       PGUSER: shop
