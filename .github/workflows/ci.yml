@@ -19,3 +19,12 @@ jobs:
 
             - name: Show image
               run: docker images tinyshop-api
+
+            - name: Trivy scan
+              run: |
+                docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:0.76.1 image \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 1 \
+                    tinyshop-api:${{ github.sha}}
