@@ -6,6 +6,10 @@ on:
 
 permissions:
     contents: read
+    packages: write
+
+env: 
+    IMAGE: ghcr.io/nemeow0w0/ttinyshop-api:${{ github.sha}}
 
 jobs:
     build:
@@ -24,10 +28,10 @@ jobs:
                     git /repo --redact --verbose
 
             - name: Build image
-              run: docker build -t tinyshop-api:${{ github.sha }} ./app
+              run: docker build -t  "$IMAGE" ./app
 
             - name: Show image
-              run: docker images tinyshop-api
+              run: docker images "$IMAGE"
 
             - name: Trivy scan
               run: |
@@ -36,5 +40,13 @@ jobs:
                     aquasec/trivy:0.76.1 image \
                     --severity HIGH,CRITICAL \
                     --exit-code 1 \
-                    tinyshop-api:${{ github.sha}}
+                    "$IMAGE"
 
+            - name: Login to GHCR
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN}}
+              run: echo "$GH_TOKEN" | docker login ghcr.io -u "GITHUB_ACTOR" --password-stdin
+
+
+            - name: Push image
+              run: docker push "$IMAGE"
