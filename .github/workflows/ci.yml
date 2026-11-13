@@ -1,0 +1,25 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+jobs:
+    hello:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Before checkout
+              run: ls -la
+
+            - uses: actions/checkout@v7
+
+            - name: After checkout
+              run: ls -la
+
+            - name: Tools on this machine
+              run: |
+                uname -a
+                docker --version
