@@ -9,7 +9,7 @@ permissions:
     
 
 env:
-    IMAGE = ghcr.io/nemeow0w0/tinyshop-api:${{ github.sha }}
+    IMAGE: ghcr.io/nemeow0w0/tinyshop-api:${{ github.sha }}
 jobs:
     hello:
         runs-on: ubuntu-latest
