@@ -22,6 +22,9 @@ jobs:
             - name: Who am I
               run: whoami
 
+            - name: Break on purpose
+              run: exit 1
+
             - name: Whare am I
               run: pwd
 
