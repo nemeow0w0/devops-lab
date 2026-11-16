@@ -39,3 +39,12 @@ jobs:
               run: |
                 docker build -t "$IMAGE" ./app
                 docker images
+
+            - name: Trivy scan
+              run: |
+                docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:0.76@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c image \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 1 \
+                    "$IMAGE"
