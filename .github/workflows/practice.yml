@@ -7,6 +7,9 @@ on:
 permissions:
     contents: read
     
+
+env:
+    IMAGE = ghcr.io/nemeow0w0/tinyshop-api:${{ github.sha }}
 jobs:
     hello:
         runs-on: ubuntu-latest
@@ -22,11 +25,12 @@ jobs:
             - name: Who am I
               run: whoami
 
-            - name: Break on purpose
-              run: exit 1
 
-            - name: Whare am I
+            - name: Where am I
               run: pwd
 
             - name: What files
               run: ls -al
+
+            - name: Show images name
+              run: echo "$IMAGE"
