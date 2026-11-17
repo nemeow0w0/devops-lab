@@ -7,10 +7,10 @@ on:
 permissions:
     contents: read
     packages: write
+    
 
-env: 
-    IMAGE: ghcr.io/nemeow0w0/tinyshop-api:${{ github.sha}}
-
+env:
+    IMAGE: ghcr.io/nemeow0w0/tinyshop-api:${{ github.sha }}
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -31,6 +31,7 @@ jobs:
               run: docker build -t  "$IMAGE" ./app
 
 
+
             - name: Trivy scan
               run: |
                 docker run --rm \
@@ -39,6 +40,7 @@ jobs:
                     --severity HIGH,CRITICAL \
                     --exit-code 1 \
                     "$IMAGE"
+
 
             - name: Login to GHCR
               env:
