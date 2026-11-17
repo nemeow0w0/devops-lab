@@ -14,12 +14,6 @@ jobs:
     hello:
         runs-on: ubuntu-latest
         steps:
-            - name: Files before checkout
-              run: ls -al
-              
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
-              with:
-                fetch-depth: 0
 
             - name: Gitleaks scan
               run: |
@@ -29,26 +23,6 @@ jobs:
                     git /repo --redact --verbose
 
 
-            - name: Say hello
-              run: echo "Hello CI!"
-
-            - name: Who am I
-              run: whoami
-
-
-            - name: Where am I
-              run: pwd
-
-            - name: What files
-              run: ls -al
-
-            - name: Show images name
-              run: echo "$IMAGE"
-
-            - name: Build image
-              run: |
-                docker build -t "$IMAGE" ./app
-                docker images
 
             - name: Trivy scan
               run: |
@@ -58,3 +32,13 @@ jobs:
                     --severity HIGH,CRITICAL \
                     --exit-code 1 \
                     "$IMAGE"
+
+
+            - name: Login to GHCR
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN}}
+              run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+
+            - name: Push image
+              run: docker push "$IMAGE"
