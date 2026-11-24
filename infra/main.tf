@@ -42,3 +42,41 @@ resource "aws_vpc_security_group_egress_rule" "all_out" {
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
 }
+
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"]
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+}
+
+
+resource "aws_key_pair" "lab" {
+  key_name   = "aws-lab"
+  public_key = file("~/.ssh/aws-lab.pub")
+}
+
+
+resource "aws_instance" "lab" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t3.small"
+  key_name               = aws_key_pair.lab.key_name
+  vpc_security_group_ids = [aws_security_group.ssh.id]
+
+  credit_specification {
+    cpu_credits = "standard"
+  }
+
+  tags = {
+    Name = "aws-lab"
+  }
+}
+
+
+output "public_ip" {
+  value = aws_instance.lab.public_ip
+}
