@@ -7,6 +7,10 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y docker.io docker-compose-v2
 
+# 1b Install AWS CLI
+
+snap install aws-cli --classic
+
 
 # 2) get the code in github repo
 git clone https://github.com/nemeow0w0/devops-lab.git /services/devops-lab

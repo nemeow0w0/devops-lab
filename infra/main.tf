@@ -68,6 +68,15 @@ resource "aws_instance" "lab" {
   vpc_security_group_ids = [aws_security_group.ssh.id]
   user_data              = file("${path.module}/user_data.sh")
 
+  iam_instance_profile = aws_iam_instance_profile.backup.name
+
+  root_block_device {
+    encrypted = true
+  }
+
+  metadata_options {
+    http_tokens = "required"
+  }
   credit_specification {
     cpu_credits = "standard"
   }
