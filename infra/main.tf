@@ -66,6 +66,7 @@ resource "aws_instance" "lab" {
   instance_type          = "t3.small"
   key_name               = aws_key_pair.lab.key_name
   vpc_security_group_ids = [aws_security_group.ssh.id]
+  user_data              = file("${path.module}/user_data.sh")
 
   credit_specification {
     cpu_credits = "standard"
