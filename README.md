@@ -143,3 +143,115 @@ If Trivy fails, there is no image, so it can't be deployed.
 - **Deleted secrets still leak:** they stay in Git history. Rotate them.
 - **Tag vs digest:** a tag can move, a digest can't. With a digest, Docker ignores the tag.
 - **Read the logs:** the red step isn't always the buggy one. Exit 125 = Docker failed, exit 1 = Trivy found vulns.
+
+## Stage 4: AWS with Terraform
+
+Terraform builds a small, locked-down server on AWS that runs TinyShop, and a private
+S3 bucket for database backups. One command creates everything. One command deletes it.
+
+```text
+my PC ──ssh :22 (my IP only)──▶ security group ──▶ EC2: Ubuntu 24.04 (Docker: api + db)
+my PC ──ssh tunnel──▶ 127.0.0.1:3355 on EC2         (the API is not public)
+EC2   ──IAM role: s3:PutObject on backups/* only──▶ S3 bucket (private, files deleted after 7 days)
+```
+
+| File | What it creates |
+| --- | --- |
+| `infra/main.tf` | Security group, SSH key pair, EC2 server |
+| `infra/s3.tf` | Backup bucket (public access blocked, 7-day lifecycle) |
+| `infra/iam.tf` | IAM role for the server (upload backups only) |
+| `infra/user_data.sh` | First-boot script: install Docker, clone this repo, make `.env`, start the app |
+
+### Account safety (before → after)
+
+| Before | After |
+| --- | --- |
+| Root account used for everything | Daily work as an IAM admin user with MFA. Root has MFA and no access keys. |
+| An admin user had a permanent access key | Deleted. There are no permanent keys in the account. |
+| CLI used a permanent `AKIA` key | `aws login` gives short-lived credentials. No `credentials` file on my PC. |
+| Budget counted credits, so it always showed $0 | Budget shows real spend. Zero-spend and $5 alerts (tested: the email arrived). |
+
+### Security choices
+
+- **SSH from my IP only:** port 22 is open to one IP (`/32`). The IP is a Terraform
+  variable, so it is never in Git.
+- **API is not public:** it listens on `127.0.0.1:3355`. I use an SSH tunnel. Two layers:
+  even if someone opens port 3355 in the security group, nothing listens on the public IP.
+- **Least-privilege role:** the server can only upload to `backups/*`. It cannot list, read,
+  or delete. A hacker on the server can't steal old backups or delete them (ransomware).
+  Old backups are deleted by an S3 lifecycle rule, not by the server.
+- **No keys on the server:** the role gives short-lived credentials. IMDSv2 is required,
+  which blocks SSRF attacks that steal role credentials (like Capital One in 2019).
+- **Secrets are made on the server:** `user_data` is not secret (it shows in the plan, the
+  state file, and the AWS console). So the database password is created on the server
+  with `openssl rand`, saved with `umask 077`, and never printed (`set -x` is off).
+- **Encrypted disk** and a **trusted image** (Ubuntu from Canonical's owner ID only).
+- **Private bucket:** all 4 public access blocks are on. The name has a random suffix.
+- **State file:** it holds sensitive data in plain text, so it is in `.gitignore` and
+  `chmod 600`.
+- **No surprise bills:** `cpu_credits = "standard"`, budget alerts, and I destroy
+  everything after each lab.
+
+### Usage
+
+```bash
+aws login --remote
+export TF_VAR_my_ip="$(curl -s https://checkip.amazonaws.com)/32"
+echo $TF_VAR_my_ip
+
+terraform init
+terraform plan        # expect: 11 to add
+terraform apply
+ssh -i ~/.ssh/aws-lab ubuntu@$(terraform output -raw public_ip) cloud-init status --wait
+
+# Terminal 2: open the tunnel and keep it open
+ssh -i ~/.ssh/aws-lab -N -L 3355:127.0.0.1:3355 ubuntu@$(terraform output -raw public_ip)
+# Terminal 1:
+curl 127.0.0.1:3355/health
+
+terraform destroy     # expect: 11 destroyed
+```
+
+After `destroy`, I also ask AWS directly that no instances, volumes, or buckets are left.
+
+### Tests I ran
+
+| Test (on the server) | Expected | Result |
+| --- | --- | --- |
+| Who am I? | assumed role, no keys on disk | ✅ |
+| Upload to `backups/` | allowed | ✅ |
+| Upload to `other/` | AccessDenied | ✅ |
+| List the bucket | AccessDenied | ✅ |
+| Read a backup | 403 Forbidden | ✅ |
+| Delete a backup | AccessDenied | ✅ |
+| Call the EC2 API | UnauthorizedOperation | ✅ |
+| IMDSv1 (no token) | 401 | ✅ |
+| Public IP, port 3355 (from my PC) | timeout | ✅ |
+
+Backup and restore check:
+
+```bash
+# On EC2: back up straight to S3 (no file on the disk)
+sudo docker compose exec -T db pg_dump -U shop shop | gzip | aws s3 cp - s3://$B/backups/shop-$(date +%F-%H%M).sql.gz
+
+# On my PC (admin): the backup has my test row
+aws s3 cp s3://$B/backups/shop-YYYY-MM-DD-HHMM.sql.gz - | gunzip | grep backup-test
+```
+
+I rebuilt everything from an empty folder two times: once with notes, once from memory.
+
+### What I Learned
+
+- **Terraform = blueprint + notebook:** `.tf` files say what I want. The state file remembers
+  what exists. Terraform only knows what is in state, so after `destroy` I still check AWS.
+- **`validate` is not enough:** it can't catch wrong text like `"Services"` or
+  `ec2.amazonaws.com0`. My tests caught them.
+- **Read the error:** `Connection timed out` = the security group blocked me.
+  `Permission denied (publickey)` = I reached the server, but the key is wrong.
+- **Fail for the right reason:** a test that fails with `NoSuchBucket` is not a pass. It must
+  fail with `AccessDenied` to prove the policy works.
+- **IAM role = staff badge:** trust policy (who can wear it) + permission policy (which doors
+  it opens) + instance profile (the lanyard that puts it on EC2).
+- **Real problems happen:** my home IP changed in the middle of a lab. I updated the variable,
+  and `apply` changed only one rule (`1 to change`).
+- **A backup you never restored is not a backup.**
