@@ -1,0 +1,67 @@
+
+# PVC: ขอพื้นที่ disk ให้ Postgres (ไม่หายเวลา pod ถูกแทน) 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgdata
+  namespace: tinyshop
+spec:
+  accessModes: ["ReadWriteOnce"] # ให้ mount ได้ทีละ 1 เครื่อง
+  resources:
+    requests:
+      storage: 1Gi  # ขอพื้นที่ 1 GB
+---
+#  Deployment: สั่งให้รัน Postgres 1 ตัว
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: tinyshop
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate                    # ปิดตัวเก่าก่อน แล้วค่อยเปิดตัวใหม่
+                                     #  ห้ามมี Postgres 2 ตัวเขียนลง disk เดียวกัน ไม่งั้นข้อมูลพัง
+
+  selector:
+    matchLabels:
+      app: db   # Deployment ดูแลเฉพาะ pod ที่ติดป้าย app: db
+  template:   #แบบพิมพ์ของ pod
+    metadata:
+      labels:
+        app: db  # ติดป้ายนี้ให้ทุก pod ที่สร้างจากแบบพิมพ์นี้
+    spec:
+      containers:
+        - name: db
+          image: postgres:18.6-alpine3.24      # image เดียวกับใน compose
+          env:
+            - name: POSTGRES_USER
+              value: shop
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:  #  ดึงรหัสมาจาก Secret ไม่ได้เขียนไว้ในไฟล์
+                  name: tinyshop-db
+                  key: PG_PASS
+
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql 
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: pgdata     # ใช้ PVC จากข้อ บน
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: db  # ชื่อนี้กลายเป็นชื่อ DNS → api ต่อไปที่ db:5432
+  namespace: tinyshop
+spec:
+  selector:
+    app: db  # ส่งสายต่อไปให้ pod ที่ติดป้าย app: db
+  ports:
+    - port: 5432
